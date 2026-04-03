@@ -79,14 +79,21 @@ function getHeaderRow_() {
   ];
 }
 
-/** Ensures row 1 has column titles when the sheet is new or row 1 is blank. */
+/**
+ * Writes row 1 to match getHeaderRow_() when the sheet is new, blank, or has
+ * fewer columns than expected (e.g. before Gender / Dancer existed). Redeploy
+ * the Web App after changing headers so POST uses the same column order.
+ */
 function ensureHeaders_(sheet) {
   var headers = getHeaderRow_();
+  var need = headers.length;
   if (sheet.getLastRow() < 1) {
     sheet.appendRow(headers);
     return;
   }
-  var first = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+  var lastCol = sheet.getLastColumn();
+  var wide = Math.max(need, lastCol);
+  var first = sheet.getRange(1, 1, 1, wide).getValues()[0];
   var empty = true;
   for (var c = 0; c < first.length; c++) {
     if (String(first[c]).trim() !== "") {
@@ -95,8 +102,80 @@ function ensureHeaders_(sheet) {
     }
   }
   if (empty) {
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.getRange(1, 1, 1, need).setValues([headers]);
+    return;
   }
+  if (lastCol < need) {
+    sheet.getRange(1, 1, 1, need).setValues([headers]);
+    return;
+  }
+  var lastTitle = String(sheet.getRange(1, lastCol).getValue()).trim();
+  if (lastTitle !== "Photo URLs") {
+    sheet.getRange(1, 1, 1, need).setValues([headers]);
+  }
+}
+
+/** Reads gender / dancer from JSON with common key fallbacks. */
+function getGender_(data) {
+  var v = data.gender != null ? String(data.gender) : "";
+  if (v) return v;
+  if (data.Gender != null) return String(data.Gender);
+  return "";
+}
+
+function getDancer_(data) {
+  var v = data.dancer != null ? String(data.dancer) : "";
+  if (v) return v;
+  if (data.Dancer != null) return String(data.Dancer);
+  return "";
+}
+
+function buildRow_(data, photoCell) {
+  return [
+    new Date(),
+    data.fullName || "",
+    data.age || "",
+    data.height || "",
+    data.location || "",
+    getGender_(data),
+    data.whatsapp || "",
+    data.instagram || "",
+    data.videoPresentation || "",
+    data.actingInterest || "",
+    getDancer_(data),
+    data.professionalModel || "",
+    data.minimumCosting || "",
+    photoCell,
+  ];
+}
+
+/**
+ * Builds the Photo URLs cell: Drive links, or a short note if upload failed.
+ */
+function formatPhotoUrlsCell_(urls, uploadErrors, photos) {
+  if (urls.length) {
+    var cell = urls.join("\n");
+    if (uploadErrors.length) {
+      cell += "\n---\nWarnings: " + uploadErrors.slice(0, 3).join(" | ");
+    }
+    return cell;
+  }
+  if (photos && photos.length) {
+    var names = [];
+    for (var i = 0; i < photos.length; i++) {
+      names.push(photos[i].name || "photo" + (i + 1));
+    }
+    var err =
+      uploadErrors.length > 0 ? uploadErrors[0] : "Drive upload did not return URLs";
+    return (
+      photos.length +
+      " file(s): " +
+      names.join(", ") +
+      " — " +
+      err
+    );
+  }
+  return "";
 }
 
 /**
@@ -149,6 +228,7 @@ function doGet() {
       ok: true,
       service: "vishu-register",
       hint: "POST JSON registrations to this URL from your Next.js /api/register proxy.",
+      schemaColumns: 13,
     })
   ).setMimeType(ContentService.MimeType.JSON);
 }
@@ -175,47 +255,49 @@ function doPost(e) {
     var sheet = getRegistrationSheet_(cfg);
 
     var photoUrls = [];
+    var photoErrs = [];
     if (data.photos && data.photos.length) {
-      var folder = getPhotosFolderForUpload_(cfg);
+      var folder;
+      try {
+        folder = getPhotosFolderForUpload_(cfg);
+      } catch (fe) {
+        photoErrs.push("Drive folder: " + String(fe));
+        folder = null;
+      }
       var stamp = Utilities.formatDate(
         new Date(),
         Session.getScriptTimeZone(),
         "yyyyMMdd-HHmmss"
       );
-      for (var i = 0; i < data.photos.length; i++) {
-        var ph = data.photos[i];
-        if (!ph.dataBase64) continue;
-        var mime = ph.mimeType || "image/jpeg";
-        var ext = mime.indexOf("png") !== -1 ? "png" : "jpg";
-        var safeName = String(ph.name || "photo").replace(/[^\w.\-]/g, "_");
-        var fname =
-          stamp + "-" + (i + 1) + "-" + safeName + "." + ext;
-        var blob = Utilities.newBlob(
-          Utilities.base64Decode(ph.dataBase64),
-          mime,
-          fname
-        );
-        var file = folder.createFile(blob);
-        photoUrls.push(file.getUrl());
+      if (folder) {
+        for (var i = 0; i < data.photos.length; i++) {
+          var ph = data.photos[i];
+          if (!ph.dataBase64) {
+            photoErrs.push("Photo " + (i + 1) + ": missing dataBase64");
+            continue;
+          }
+          try {
+            var mime = ph.mimeType || "image/jpeg";
+            var ext = mime.indexOf("png") !== -1 ? "png" : "jpg";
+            var safeName = String(ph.name || "photo").replace(/[^\w.\-]/g, "_");
+            var fname =
+              stamp + "-" + (i + 1) + "-" + safeName + "." + ext;
+            var blob = Utilities.newBlob(
+              Utilities.base64Decode(ph.dataBase64),
+              mime,
+              fname
+            );
+            var file = folder.createFile(blob);
+            photoUrls.push(file.getUrl());
+          } catch (pe) {
+            photoErrs.push("Photo " + (i + 1) + ": " + String(pe));
+          }
+        }
       }
     }
 
-    sheet.appendRow([
-      new Date(),
-      data.fullName || "",
-      data.age || "",
-      data.height || "",
-      data.location || "",
-      data.gender || "",
-      data.whatsapp || "",
-      data.instagram || "",
-      data.videoPresentation || "",
-      data.actingInterest || "",
-      data.dancer || "",
-      data.professionalModel || "",
-      data.minimumCosting || "",
-      photoUrls.join("\n"),
-    ]);
+    var photoCell = formatPhotoUrlsCell_(photoUrls, photoErrs, data.photos || []);
+    sheet.appendRow(buildRow_(data, photoCell));
 
     out.ok = true;
     return jsonResponse_(out);
@@ -229,6 +311,24 @@ function jsonResponse_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(
     ContentService.MimeType.JSON
   );
+}
+
+/**
+ * Run once from the editor if Gender/Dancer columns are missing or mislabeled:
+ * overwrites row 1 with the canonical header row from getHeaderRow_().
+ * (Older rows may still be misaligned; new rows will match.)
+ */
+function forceHeadersRow1() {
+  var cfg = getConfig_();
+  if (!cfg.sheetId || cfg.sheetId === "YOUR_SPREADSHEET_ID") {
+    throw new Error("Set SHEET_ID.");
+  }
+  var sheet = SpreadsheetApp.openById(cfg.sheetId).getSheetByName(cfg.sheetName);
+  if (!sheet) {
+    throw new Error("Sheet tab not found: " + cfg.sheetName);
+  }
+  var headers = getHeaderRow_();
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 }
 
 /**

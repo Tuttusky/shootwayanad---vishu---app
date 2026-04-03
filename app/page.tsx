@@ -459,7 +459,19 @@ export default function Home() {
                 </div>
                 <div className={`mt-2 pt-2 border-t border-white/5 ${showCosting ? '' : 'hidden'}`} id="costingField">
                   <label className="block text-[8px] font-bold text-primary-container uppercase tracking-widest mb-1">Minimum Costing *</label>
-                  <input name="minimumCosting" className="w-full bg-transparent border-none p-0 text-sm text-on-surface placeholder:text-white/20 outline-none focus:ring-0 font-medium" placeholder="Per day / per shoot" type="text" required={showCosting}/>
+                  <input
+                    name="minimumCosting"
+                    className="w-full bg-transparent border-none p-0 text-sm text-on-surface placeholder:text-white/20 outline-none focus:ring-0 font-medium"
+                    placeholder="Amount (numbers only)"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="\d*"
+                    autoComplete="off"
+                    required={showCosting}
+                    onInput={(e) => {
+                      e.currentTarget.value = e.currentTarget.value.replace(/[^0-9]/g, "");
+                    }}
+                  />
                 </div>
               </div>
             </div>

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { SITE_HOOK, SITE_TAGLINE, SITE_TITLE } from "@/lib/site-marketing";
 
 const CARDS = [
   {
@@ -73,14 +74,21 @@ export function CategoryChooser() {
 
       <main className="animate-category-enter relative z-10 mx-auto max-w-lg px-4 pb-10 pt-8">
         <header className="mb-8 text-center">
-          <p className="mb-2 font-headline text-[10px] font-bold uppercase tracking-[0.35em] text-on-background/85">
-            Casting Call 2026
+          <p className="mb-3 font-headline text-[12px] font-semibold leading-snug text-on-background md:text-[13px]">
+            <span aria-hidden>🔥 </span>
+            {SITE_HOOK}
           </p>
-          <h2 className="font-headline text-2xl font-extrabold tracking-tight text-on-background md:text-3xl">
-            Choose Your Category
+          <h2 className="font-headline text-xl font-extrabold leading-tight tracking-tight text-on-background sm:text-2xl md:text-3xl">
+            <span aria-hidden className="mr-1.5 inline-block">
+              🎬
+            </span>
+            {SITE_TITLE}
           </h2>
-          <p className="mx-auto mt-3 max-w-sm text-[13px] leading-relaxed text-on-background/80">
-            Select the category that best describes you
+          <p className="mx-auto mt-3 max-w-md text-[13px] leading-relaxed text-on-background/85 md:text-[14px]">
+            {SITE_TAGLINE}
+          </p>
+          <p className="mx-auto mt-5 max-w-sm text-[10px] font-bold uppercase tracking-[0.3em] text-on-background/55">
+            Choose your category
           </p>
         </header>
 

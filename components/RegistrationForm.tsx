@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { photosToPayload } from "@/lib/registration-images";
 import { playRegistrationSuccessSound } from "@/lib/registration-success-sound";
@@ -46,12 +47,24 @@ const VALID_MAIN_AGE_CATEGORIES = new Set([
   "mature_men",
 ]);
 
+function genderFromAgeCategory(cat: string): "" | "female" | "male" {
+  const map: Record<string, "female" | "male"> = {
+    female: "female",
+    male: "male",
+    mature_women: "female",
+    mature_men: "male",
+  };
+  return map[cat] ?? "";
+}
+
 export function RegistrationForm({
   initialAgeCategory = "",
 }: {
   initialAgeCategory?: string;
 }) {
-  const [genderSelected, setGenderSelected] = useState<string>("");
+  const [genderSelected, setGenderSelected] = useState<string>(() =>
+    genderFromAgeCategory(initialAgeCategory)
+  );
   /** After user picks Yes on "already in WA group", show thank-you and hide Yes/No. */
   const [waGroupThankYou, setWaGroupThankYou] = useState(false);
   /** User selected No on WA group — show creator community line. */
@@ -65,6 +78,8 @@ export function RegistrationForm({
   const [showCommunityPopup, setShowCommunityPopup] = useState(false);
   /** After submit: user said Yes on "already in WA group" — thank-you copy + redirect to official number only. */
   const [successAlreadyInWaGroup, setSuccessAlreadyInWaGroup] = useState(false);
+  /** Female / Mature Women: web series poster popup after delay */
+  const [showWebSeriesPopup, setShowWebSeriesPopup] = useState(false);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const WHATSAPP_COMMUNITY_URL =
@@ -94,15 +109,29 @@ export function RegistrationForm({
 
   useEffect(() => {
     if (!initialAgeCategory) return;
-    const map: Record<string, "female" | "male"> = {
-      female: "female",
-      male: "male",
-      mature_women: "female",
-      mature_men: "male",
-    };
-    const g = map[initialAgeCategory];
+    const g = genderFromAgeCategory(initialAgeCategory);
     if (g) setGenderSelected(g);
   }, [initialAgeCategory]);
+
+  /** Web series casting poster — female & mature_women only, 5s after load */
+  useEffect(() => {
+    if (initialAgeCategory !== "female" && initialAgeCategory !== "mature_women") {
+      setShowWebSeriesPopup(false);
+      return;
+    }
+    const id = window.setTimeout(() => setShowWebSeriesPopup(true), 5000);
+    return () => window.clearTimeout(id);
+  }, [initialAgeCategory]);
+
+  useEffect(() => {
+    if (submitting) setShowWebSeriesPopup(false);
+  }, [submitting]);
+
+  const isMaleOnlyLanding =
+    initialAgeCategory === "male" || initialAgeCategory === "mature_men";
+  const isFemaleOnlyLanding =
+    initialAgeCategory === "female" ||
+    initialAgeCategory === "mature_women";
 
   const categoryOptionsVisible =
     genderSelected === "male"
@@ -280,10 +309,26 @@ export function RegistrationForm({
   return (
     <div className="bg-background font-body selection:bg-primary-container/25 selection:text-on-surface overflow-x-hidden min-h-screen">
       <nav className="fixed top-0 z-50 w-full border-b border-on-background/30 bg-background/90 backdrop-blur-xl">
-        <div className="flex items-center justify-between px-5 py-3 w-full max-w-md mx-auto">
-          <span className="material-symbols-outlined text-on-background">menu</span>
-          <h1 className="font-headline font-bold text-sm text-on-background uppercase tracking-widest">Vishu Shoot 2026</h1>
-          <div className="w-7 h-7 shrink-0" aria-hidden />
+        <div className="flex max-w-md items-center px-5 py-3 mx-auto w-full">
+          <div className="flex min-w-0 flex-1 justify-start">
+            <Link
+              href="/"
+              className="flex items-center gap-1.5 rounded-lg py-1 pr-2 -ml-1 text-on-background hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container"
+            >
+              <span className="material-symbols-outlined shrink-0 text-xl" aria-hidden>
+                arrow_back
+              </span>
+              <span className="font-headline text-xs font-bold uppercase tracking-wide">
+                Back
+              </span>
+            </Link>
+          </div>
+          <h1 className="font-headline shrink-0 px-2 text-center text-sm font-bold uppercase tracking-widest text-on-background">
+            Vishu Shoot 2026
+          </h1>
+          <div className="flex min-w-0 flex-1 justify-end" aria-hidden>
+            <div className="h-7 w-7 shrink-0" />
+          </div>
         </div>
       </nav>
 
@@ -437,30 +482,80 @@ export function RegistrationForm({
                 )}
               </div>
               <div className="col-span-6 bg-surface-container border border-outline rounded-xl p-2.5">
-                <p className="mb-2 text-[9px] font-medium leading-none text-white">Female or Male *</p>
-                <div className="flex gap-2 max-w-xs">
-                  <label className="flex-1 cursor-pointer">
-                    <input
-                      className="peer hidden"
-                      name="gender"
-                      required
-                      type="radio"
-                      value="female"
-                      onChange={() => setGenderSelected("female")}
-                    />
-                    <div className="w-full py-2 text-center rounded-lg border border-outline text-[11px] font-bold peer-checked:bg-primary-container peer-checked:text-on-primary">Female</div>
-                  </label>
-                  <label className="flex-1 cursor-pointer">
-                    <input
-                      className="peer hidden"
-                      name="gender"
-                      type="radio"
-                      value="male"
-                      onChange={() => setGenderSelected("male")}
-                    />
-                    <div className="w-full py-2 text-center rounded-lg border border-outline text-[11px] font-bold peer-checked:bg-primary-container peer-checked:text-on-primary">Male</div>
-                  </label>
-                </div>
+                {isMaleOnlyLanding ? (
+                  <>
+                    <p className="mb-2 text-[9px] font-medium leading-none text-white">
+                      Gender *
+                    </p>
+                    <div className="flex max-w-xs gap-2">
+                      <label className="flex-1 cursor-default">
+                        <input
+                          className="peer hidden"
+                          name="gender"
+                          type="radio"
+                          value="male"
+                          defaultChecked
+                        />
+                        <div className="w-full rounded-lg border border-outline py-2 text-center text-[11px] font-bold peer-checked:bg-primary-container peer-checked:text-on-primary">
+                          Male
+                        </div>
+                      </label>
+                    </div>
+                  </>
+                ) : isFemaleOnlyLanding ? (
+                  <>
+                    <p className="mb-2 text-[9px] font-medium leading-none text-white">
+                      Gender *
+                    </p>
+                    <div className="flex max-w-xs gap-2">
+                      <label className="flex-1 cursor-default">
+                        <input
+                          className="peer hidden"
+                          name="gender"
+                          type="radio"
+                          value="female"
+                          defaultChecked
+                        />
+                        <div className="w-full rounded-lg border border-outline py-2 text-center text-[11px] font-bold peer-checked:bg-primary-container peer-checked:text-on-primary">
+                          Female
+                        </div>
+                      </label>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="mb-2 text-[9px] font-medium leading-none text-white">
+                      Female or Male *
+                    </p>
+                    <div className="flex gap-2 max-w-xs">
+                      <label className="flex-1 cursor-pointer">
+                        <input
+                          className="peer hidden"
+                          name="gender"
+                          required
+                          type="radio"
+                          value="female"
+                          onChange={() => setGenderSelected("female")}
+                        />
+                        <div className="w-full py-2 text-center rounded-lg border border-outline text-[11px] font-bold peer-checked:bg-primary-container peer-checked:text-on-primary">
+                          Female
+                        </div>
+                      </label>
+                      <label className="flex-1 cursor-pointer">
+                        <input
+                          className="peer hidden"
+                          name="gender"
+                          type="radio"
+                          value="male"
+                          onChange={() => setGenderSelected("male")}
+                        />
+                        <div className="w-full py-2 text-center rounded-lg border border-outline text-[11px] font-bold peer-checked:bg-primary-container peer-checked:text-on-primary">
+                          Male
+                        </div>
+                      </label>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </section>
@@ -814,6 +909,53 @@ export function RegistrationForm({
           </button>
         </div>
       </div>
+
+      {showWebSeriesPopup ? (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="web-series-popup-title"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            aria-label="Close announcement"
+            onClick={() => setShowWebSeriesPopup(false)}
+          />
+          <div className="relative z-10 flex w-full max-w-[min(100%,22rem)] flex-col items-stretch">
+            <h2 id="web-series-popup-title" className="sr-only">
+              Web series casting call
+            </h2>
+            <button
+              type="button"
+              onClick={() => setShowWebSeriesPopup(false)}
+              className="absolute -right-1 -top-1 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-outline bg-surface-container-low text-on-surface shadow-lg transition-colors hover:bg-surface-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container"
+              aria-label="Close"
+            >
+              <span className="material-symbols-outlined text-[22px]">close</span>
+            </button>
+            <div className="max-h-[min(85vh,90dvh)] overflow-hidden rounded-2xl border border-outline bg-surface-container-low shadow-2xl">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/web-series-casting.jpg"
+                alt="Web series casting call — Shoot Wayanad, female leads, Wayanad"
+                className="h-auto w-full max-h-[min(85vh,90dvh)] object-contain object-top"
+                width={800}
+                height={1200}
+                sizes="(max-width: 448px) 100vw, 22rem"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowWebSeriesPopup(false)}
+              className="mt-4 w-full rounded-xl border border-outline bg-surface-container-low/95 py-3 font-headline text-xs font-bold uppercase tracking-wide text-on-surface shadow-sm backdrop-blur-sm transition-colors hover:bg-surface-container"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-0 overflow-hidden opacity-10">
         <div className="absolute top-[5%] -right-10 w-40 h-40 border border-primary-container/20 rounded-full"></div>

@@ -190,19 +190,26 @@ export function KidsRegistrationForm() {
   return (
     <div className="bg-background font-body selection:bg-primary-container/25 selection:text-on-surface min-h-screen overflow-x-hidden">
       <nav className="fixed top-0 z-50 w-full border-b border-on-background/30 bg-background/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
-          <Link
-            href="/"
-            role="button"
-            className="material-symbols-outlined text-2xl text-on-background"
-            aria-label="Back to categories"
-          >
-            arrow_back
-          </Link>
-          <h1 className="font-headline text-sm font-bold uppercase tracking-widest text-on-background">
+        <div className="mx-auto flex max-w-md items-center px-4 py-3 w-full">
+          <div className="flex min-w-0 flex-1 justify-start">
+            <Link
+              href="/"
+              className="flex items-center gap-1.5 rounded-lg py-1 pr-2 -ml-1 text-on-background hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container"
+            >
+              <span className="material-symbols-outlined shrink-0 text-xl" aria-hidden>
+                arrow_back
+              </span>
+              <span className="font-headline text-xs font-bold uppercase tracking-wide">
+                Back
+              </span>
+            </Link>
+          </div>
+          <h1 className="font-headline shrink-0 px-2 text-center text-sm font-bold uppercase tracking-widest text-on-background">
             Kids — Vishu 2026
           </h1>
-          <div className="w-8 shrink-0" aria-hidden />
+          <div className="flex min-w-0 flex-1 justify-end" aria-hidden>
+            <div className="h-8 w-8 shrink-0" />
+          </div>
         </div>
       </nav>
 

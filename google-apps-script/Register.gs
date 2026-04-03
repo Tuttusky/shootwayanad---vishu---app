@@ -36,7 +36,8 @@
  *      Who has access: Anyone
  *    Copy the Web App URL → Next.js `.env.local`: GAS_WEB_APP_URL=https://script.google.com/macros/s/.../exec
  *
- * JSON from your site (POST): fullName, age, height, location, gender, category, whatsapp,
+ * JSON from your site (POST): fullName, age, height, location, gender, category (string; multi = "a; b"),
+ *   categories (optional array of strings — merged into Category column), whatsapp,
  *   alreadyInWAGroup, instagram, videoPresentation, actingInterest, dancer, professionalModel, minimumCosting,
  *   ageCategory, registrationForm ("kids" | "main"), talents, photos: [ { name, mimeType, dataBase64 } ]
  *   Kids form uses the same POST shape; Age Category = kid, Registration Form = kids.
@@ -193,6 +194,15 @@ function getDancer_(data) {
 }
 
 function getCategory_(data) {
+  /** Multiple interests from Next.js: categories: string[] or category: "a; b; c" */
+  if (data.categories != null && Object.prototype.toString.call(data.categories) === "[object Array]") {
+    var parts = [];
+    for (var i = 0; i < data.categories.length; i++) {
+      var s = String(data.categories[i] != null ? data.categories[i] : "").trim();
+      if (s) parts.push(s);
+    }
+    if (parts.length) return parts.join("; ");
+  }
   var v = data.category != null ? String(data.category) : "";
   if (v) return v;
   if (data.Category != null) return String(data.Category);

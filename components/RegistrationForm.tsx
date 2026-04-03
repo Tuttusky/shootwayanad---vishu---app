@@ -11,6 +11,14 @@ const CATEGORY_OPTIONS_ALL = [
   { value: "MakeUp", label: "MakeUp" },
   { value: "Content Creation", label: "Content Creation" },
   { value: "BTS Shoot", label: "BTS Shoot" },
+  { value: "Modeling", label: "Modeling" },
+  { value: "Script Writing", label: "Script Writing" },
+  { value: "Singing", label: "Singing" },
+  { value: "Voice Over", label: "Voice Over" },
+  { value: "Camera Handling", label: "Camera Handling" },
+  { value: "Video Editing", label: "Video Editing" },
+  { value: "Video Presentation", label: "Video Presentation" },
+  { value: "Travel Content Creation", label: "Travel Content Creation" },
 ] as const;
 
 /** Hidden for Male registrants */
@@ -141,14 +149,22 @@ export function RegistrationForm({
     const height = String(fd.get("height") ?? "").trim();
     const location = String(fd.get("location") ?? "").trim();
     const gender = String(fd.get("gender") ?? "");
-    const category = String(fd.get("category") ?? "");
-    if (
-      gender === "male" &&
-      (category === "Saree Drape" || category === "MakeUp")
-    ) {
-      setSubmitError("Please choose a valid category for Male.");
+    const categories = fd
+      .getAll("category")
+      .map((v) => String(v).trim())
+      .filter(Boolean);
+    if (categories.length === 0) {
+      setSubmitError("Please select at least one option under Are you interested?");
       return;
     }
+    if (
+      gender === "male" &&
+      categories.some((c) => c === "Saree Drape" || c === "MakeUp")
+    ) {
+      setSubmitError("Please choose valid options for Male (Saree Drape & MakeUp not allowed).");
+      return;
+    }
+    const category = categories.join("; ");
     const waDigits = String(fd.get("whatsapp") ?? "").replace(/\D/g, "");
     let whatsapp = "";
     if (waDigits.length === 10) {
@@ -190,6 +206,7 @@ export function RegistrationForm({
         location,
         gender,
         category,
+        categories,
         whatsapp,
         alreadyInWAGroup,
         talents,
@@ -451,10 +468,12 @@ export function RegistrationForm({
           <section className="bg-surface-container-low border border-outline text-on-surface rounded-2xl p-3">
             <div className="flex items-center gap-2 mb-3 px-1">
               <span className="w-1 h-3 bg-primary-container rounded-full"></span>
-              <h3 className="font-headline text-xs font-bold uppercase tracking-widest text-on-background/90">Category</h3>
+              <h3 className="font-headline text-xs font-bold uppercase tracking-widest text-on-background/90">
+                Are you interested?
+              </h3>
             </div>
             <p className="mb-3 px-0.5 text-[9px] font-medium leading-snug text-white">
-              Select one category *
+              Select all that apply *
               {genderSelected === "male" ? (
                 <span className="mt-1 block normal-case tracking-normal text-white/55">
                   (Saree Drape &amp; MakeUp not shown for Male)
@@ -463,18 +482,17 @@ export function RegistrationForm({
             </p>
             <div
               key={genderSelected || "any"}
-              className="grid grid-cols-1 gap-2"
+              className="grid grid-cols-1 gap-2 sm:grid-cols-2"
             >
-              {categoryOptionsVisible.map((opt, idx) => (
+              {categoryOptionsVisible.map((opt) => (
                 <label key={opt.value} className="cursor-pointer block">
                   <input
                     className="peer hidden"
                     name="category"
-                    required={idx === 0}
-                    type="radio"
+                    type="checkbox"
                     value={opt.value}
                   />
-                  <div className="w-full py-2.5 px-3 rounded-xl border border-outline text-[11px] font-bold text-on-surface peer-checked:bg-primary-container peer-checked:text-on-primary transition-colors">
+                  <div className="w-full py-2.5 px-3 rounded-xl border border-outline text-[11px] font-bold text-on-surface peer-checked:bg-primary-container peer-checked:text-on-primary peer-focus-visible:ring-2 peer-focus-visible:ring-primary-container/50 transition-colors">
                     {opt.label}
                   </div>
                 </label>

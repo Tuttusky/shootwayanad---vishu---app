@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Manrope, Plus_Jakarta_Sans } from "next/font/google";
 import { GlobalButtonVibration } from "@/components/GlobalButtonVibration";
 import "./globals.css";
@@ -18,6 +18,16 @@ export const metadata: Metadata = {
   description: "Casting Call 2026",
 };
 
+/** Fit mobile width; limit pinch-zoom so layout stays stable (pair with 16px+ form fields in globals.css). */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  interactiveWidget: "overlays-content",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -26,12 +36,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${manrope.variable} ${plusJakartaSans.variable} h-full antialiased`}
+      className={`${manrope.variable} ${plusJakartaSans.variable} h-full overflow-x-hidden antialiased`}
     >
       <head>
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
       </head>
-      <body className="flex min-h-[max(884px,100dvh)] flex-col">
+      <body className="flex min-h-dvh flex-col overflow-x-hidden md:min-h-[max(884px,100dvh)]">
         <GlobalButtonVibration />
         {children}
       </body>

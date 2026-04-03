@@ -22,6 +22,14 @@ const AGE_CATEGORY_HINT: Record<string, string> = {
   mature_men: "Ages 30–55",
 };
 
+/** Matches CategoryChooser card titles — shown under the registration heading. */
+const LANDING_CATEGORY_TITLE: Record<string, string> = {
+  female: "Female",
+  male: "Male",
+  mature_women: "Mature Women",
+  mature_men: "Mature Men",
+};
+
 const VALID_MAIN_AGE_CATEGORIES = new Set([
   "female",
   "male",
@@ -266,9 +274,17 @@ export function RegistrationForm({
           <h2 className="text-3xl font-headline font-extrabold leading-tight tracking-tight">
             Vishu Shoot Model <span className="italic text-on-background/95">Registration</span>
           </h2>
-          {initialAgeCategory && AGE_CATEGORY_HINT[initialAgeCategory] ? (
+          {initialAgeCategory && LANDING_CATEGORY_TITLE[initialAgeCategory] ? (
             <p className="mt-2 text-[11px] font-medium tracking-wide text-on-background/85">
-              {AGE_CATEGORY_HINT[initialAgeCategory]}
+              <span className="font-semibold text-on-background/95">
+                {LANDING_CATEGORY_TITLE[initialAgeCategory]}
+              </span>
+              {AGE_CATEGORY_HINT[initialAgeCategory] ? (
+                <span className="text-on-background/70">
+                  {" "}
+                  · {AGE_CATEGORY_HINT[initialAgeCategory]}
+                </span>
+              ) : null}
             </p>
           ) : null}
         </header>
@@ -288,7 +304,7 @@ export function RegistrationForm({
             <div className="grid grid-cols-6 gap-2">
               <div className="col-span-4 group relative bg-surface-container rounded-xl p-2.5 transition-all duration-300 input-focus-glow border border-outline">
                 <label className="mb-0.5 block text-[8px] font-bold uppercase tracking-tighter text-on-background">Full Name *</label>
-                <input name="fullName" className="w-full bg-transparent border-none p-0 text-sm text-on-surface placeholder:text-on-surface/40 outline-none focus:ring-0 font-medium" placeholder="E.g. Aditi Nair" required type="text"/>
+                <input name="fullName" className="w-full bg-transparent border-none p-0 text-sm text-on-surface placeholder:text-on-surface/40 outline-none focus:ring-0 font-medium" placeholder="FULL NAME" required type="text"/>
               </div>
               <div className="col-span-2 group relative bg-surface-container rounded-xl p-2.5 transition-all duration-300 input-focus-glow border border-outline">
                 <label className="mb-0.5 block text-[8px] font-bold uppercase tracking-tighter text-on-background">Age *</label>

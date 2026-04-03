@@ -246,7 +246,7 @@ export function KidsRegistrationForm() {
                   name="fullName"
                   required
                   className="w-full border-none bg-transparent p-0 text-sm font-medium text-on-surface outline-none focus:ring-0 placeholder:text-on-surface/40"
-                  placeholder="Full name"
+                  placeholder="FULL NAME"
                   type="text"
                   autoComplete="name"
                 />

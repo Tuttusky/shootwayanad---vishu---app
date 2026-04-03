@@ -18,12 +18,16 @@
  *    Optional: PHOTOS_FOLDER_ID — if set, photos go there. If unset, a folder
  *      "Vishu Shoot 2026 — registrations" is auto-created in My Drive (first run).
  *
- *    Five landing categories → five spreadsheets (recommended):
- *      Create one Google Sheet per category, copy each id, set in code or Script properties:
- *        SHEET_ID_FEMALE, SHEET_ID_KIDS, SHEET_ID_MALE, SHEET_ID_MATURE_WOMEN, SHEET_ID_MATURE_MEN
- *      Optional tab names: SHEET_NAME_FEMALE, SHEET_NAME_KIDS, … (default Sheet1 each).
- *      Run `setupAllCategorySheets()` once (or `setupSheetHeadersForCategory("female")` etc.).
- *      Legacy: if `ageCategory` is missing (e.g. old /form link), rows use SHEET_ID / SHEET_NAME.
+ *    Categories → tabs inside ONE spreadsheet (default):
+ *      Set SHEET_ID only. On each registration POST, the matching worksheet tab is
+ *      auto-created if missing (Female, Kids, Male, Mature Women, Mature Men).
+ *      Row 1 headers are written automatically. Legacy `/form` without category uses tab SHEET_NAME (default Sheet1).
+ *
+ *    Optional — separate Google Spreadsheet per category (advanced):
+ *      Set SHEET_ID_FEMALE, SHEET_ID_KIDS, … in code or Script properties; that category
+ *      posts to that file instead. If blank, that category uses SHEET_ID + tab name above.
+ *
+ *      Run `setupAllCategorySheets()` once to pre-create all category tabs + headers.
  *
  * C) Run `setupSheetHeaders` once (▶ Run → authorize all scopes).
  *
@@ -317,52 +321,55 @@ function getCategoryRoutingKey_(data) {
 }
 
 /**
- * Returns { sheetId, sheetName } for the spreadsheet that should receive this row.
+ * Worksheet tab name for one category (inside the main SHEET_ID spreadsheet).
+ * Tabs are auto-created on first registration for that category.
+ */
+function getSheetTabNameForRouteKey_(routeKey) {
+  if (routeKey === "kid") return "Kids";
+  if (routeKey === "female") return "Female";
+  if (routeKey === "male") return "Male";
+  if (routeKey === "mature_women") return "Mature Women";
+  if (routeKey === "mature_men") return "Mature Men";
+  return "Registrations";
+}
+
+/**
+ * Returns { sheetId, sheetName } — sheetName is the worksheet tab name inside the spreadsheet.
  * routeKey: kid | female | male | mature_women | mature_men | ""
+ *
+ * If SHEET_ID_FEMALE (etc.) is set to another spreadsheet id, that file + its tab name is used.
+ * If blank, uses main SHEET_ID + auto tab name from getSheetTabNameForRouteKey_ (tab created if missing).
  */
 function getSheetTargetForCategoryKey_(cfg, routeKey) {
+  var t;
   if (routeKey === "kid") {
-    return { sheetId: cfg.sheetIdKids, sheetName: cfg.sheetNameKids };
+    t = { sheetId: cfg.sheetIdKids, sheetName: cfg.sheetNameKids };
+  } else if (routeKey === "female") {
+    t = { sheetId: cfg.sheetIdFemale, sheetName: cfg.sheetNameFemale };
+  } else if (routeKey === "male") {
+    t = { sheetId: cfg.sheetIdMale, sheetName: cfg.sheetNameMale };
+  } else if (routeKey === "mature_women") {
+    t = { sheetId: cfg.sheetIdMatureWomen, sheetName: cfg.sheetNameMatureWomen };
+  } else if (routeKey === "mature_men") {
+    t = { sheetId: cfg.sheetIdMatureMen, sheetName: cfg.sheetNameMatureMen };
+  } else {
+    return { sheetId: cfg.sheetId, sheetName: cfg.sheetName };
   }
-  if (routeKey === "female") {
-    return { sheetId: cfg.sheetIdFemale, sheetName: cfg.sheetNameFemale };
-  }
-  if (routeKey === "male") {
-    return { sheetId: cfg.sheetIdMale, sheetName: cfg.sheetNameMale };
-  }
-  if (routeKey === "mature_women") {
-    return { sheetId: cfg.sheetIdMatureWomen, sheetName: cfg.sheetNameMatureWomen };
-  }
-  if (routeKey === "mature_men") {
-    return { sheetId: cfg.sheetIdMatureMen, sheetName: cfg.sheetNameMatureMen };
-  }
-  return { sheetId: cfg.sheetId, sheetName: cfg.sheetName };
+  var id = String(t.sheetId || "").trim();
+  if (id && id !== "YOUR_SPREADSHEET_ID") return t;
+  return {
+    sheetId: cfg.sheetId,
+    sheetName: getSheetTabNameForRouteKey_(routeKey),
+  };
 }
 
 /** Returns null if OK, or an error message for the client. */
 function validateCategorySheetConfigured_(cfg, routeKey) {
   var t = getSheetTargetForCategoryKey_(cfg, routeKey);
   if (t.sheetId && t.sheetId !== "YOUR_SPREADSHEET_ID") return null;
-  if (routeKey === "") {
-    return (
-      "Default spreadsheet not set. Set SHEET_ID in code or Script properties " +
-        "(used when the form is opened without a category), or open the site from the category landing page."
-    );
-  }
-  var propMap = {
-    kid: "SHEET_ID_KIDS",
-    female: "SHEET_ID_FEMALE",
-    male: "SHEET_ID_MALE",
-    mature_women: "SHEET_ID_MATURE_WOMEN",
-    mature_men: "SHEET_ID_MATURE_MEN",
-  };
-  var prop = propMap[routeKey] || "SHEET_ID";
   return (
-    "Spreadsheet not configured for this category. Create a Google Sheet, set " +
-    prop +
-    " in code or Script properties, then run setupSheetHeadersForCategory(\"" +
-    routeKey +
-    '").'
+    "Spreadsheet not set. Set SHEET_ID in code or Script properties " +
+      "(Project Settings → Script properties). Category tabs are created automatically inside that spreadsheet."
   );
 }
 
@@ -397,6 +404,15 @@ function whatsappExistsInSheet_(sheet, incomingRaw) {
   for (var r = 0; r < vals.length; r++) {
     var ex = normalizePhoneDigits_(vals[r][0]);
     if (ex && ex === want) return true;
+  }
+  return false;
+}
+
+/** Same number cannot register twice across any tab in this spreadsheet. */
+function whatsappExistsInSpreadsheet_(spreadsheet, incomingRaw) {
+  var sheets = spreadsheet.getSheets();
+  for (var i = 0; i < sheets.length; i++) {
+    if (whatsappExistsInSheet_(sheets[i], incomingRaw)) return true;
   }
   return false;
 }
@@ -456,13 +472,14 @@ function doPost(e) {
     }
 
     var target = getSheetTargetForCategoryKey_(cfg, routeKey);
-    var sheet = getRegistrationSheet_(target);
-
     var waRaw = data.whatsapp != null ? String(data.whatsapp) : "";
-    if (whatsappExistsInSheet_(sheet, waRaw)) {
+    var ss = SpreadsheetApp.openById(target.sheetId);
+    if (whatsappExistsInSpreadsheet_(ss, waRaw)) {
       out.error = "This WhatsApp number is already registered.";
       return jsonResponse_(out);
     }
+
+    var sheet = getRegistrationSheet_(target);
 
     var photoUrls = [];
     var photoErrs = [];
@@ -568,17 +585,17 @@ function setupSheetHeadersForCategory(routeKey) {
 }
 
 /**
- * Run once: creates/opens tabs + headers for every category id that is set in config.
+ * Run once: pre-creates every category tab + headers inside SHEET_ID (or each override spreadsheet).
  */
 function setupAllCategorySheets() {
   var keys = ["female", "kid", "male", "mature_women", "mature_men"];
+  var cfg = getConfig_();
+  if (!cfg.sheetId || cfg.sheetId === "YOUR_SPREADSHEET_ID") {
+    throw new Error("Set SHEET_ID in code or Script properties.");
+  }
   for (var i = 0; i < keys.length; i++) {
-    var k = keys[i];
-    var cfg = getConfig_();
-    var t = getSheetTargetForCategoryKey_(cfg, k);
-    if (t.sheetId && t.sheetId !== "YOUR_SPREADSHEET_ID") {
-      getRegistrationSheet_(t);
-    }
+    var t = getSheetTargetForCategoryKey_(cfg, keys[i]);
+    getRegistrationSheet_(t);
   }
 }
 
@@ -590,12 +607,9 @@ function forceHeadersRow1ForCategory(routeKey) {
   var cfg = getConfig_();
   var t = getSheetTargetForCategoryKey_(cfg, routeKey);
   if (!t.sheetId) {
-    throw new Error("Set sheet id for category: " + routeKey);
+    throw new Error("Set SHEET_ID.");
   }
-  var sheet = SpreadsheetApp.openById(t.sheetId).getSheetByName(t.sheetName);
-  if (!sheet) {
-    throw new Error("Sheet tab not found: " + t.sheetName);
-  }
+  var sheet = getRegistrationSheet_(t);
   var headers = getHeaderRow_();
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 }

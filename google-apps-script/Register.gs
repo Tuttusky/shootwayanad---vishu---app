@@ -25,8 +25,8 @@
  *      Who has access: Anyone
  *    Copy the Web App URL → Next.js `.env.local`: GAS_WEB_APP_URL=https://script.google.com/macros/s/.../exec
  *
- * JSON from your site (POST): fullName, age, height, location, whatsapp, instagram,
- *   videoPresentation, actingInterest, professionalModel, minimumCosting,
+ * JSON from your site (POST): fullName, age, height, location, gender, whatsapp, instagram,
+ *   videoPresentation, actingInterest, dancer, professionalModel, minimumCosting,
  *   photos: [ { name, mimeType, dataBase64 } ]
  */
 
@@ -67,10 +67,12 @@ function getHeaderRow_() {
     "Age",
     "Height",
     "Location",
+    "Gender",
     "WhatsApp",
     "Instagram",
     "Video Presentation",
     "Acting Interest",
+    "Dancer",
     "Professional Model",
     "Minimum Costing",
     "Photo URLs",
@@ -204,10 +206,12 @@ function doPost(e) {
       data.age || "",
       data.height || "",
       data.location || "",
+      data.gender || "",
       data.whatsapp || "",
       data.instagram || "",
       data.videoPresentation || "",
       data.actingInterest || "",
+      data.dancer || "",
       data.professionalModel || "",
       data.minimumCosting || "",
       photoUrls.join("\n"),

@@ -96,7 +96,13 @@ export default function Home() {
   const [submitting, setSubmitting] = useState(false);
   const [submitProgress, setSubmitProgress] = useState(0);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showCommunityPopup, setShowCommunityPopup] = useState(false);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const WHATSAPP_COMMUNITY_URL =
+    "https://chat.whatsapp.com/F4RSbejqSdzKWi2MJRhvcb?mode=hqctcla";
+  const OFFICIAL_CONTACT_WA_URL =
+    "https://wa.me/918848772371?text=Hi%2C%20I%27m%20registered%20as%20a%20model%20for%20Vishu%20Shoot%202026";
 
   const stopSubmitProgress = () => {
     if (progressIntervalRef.current) {
@@ -137,6 +143,7 @@ export default function Home() {
     const age = String(fd.get("age") ?? "").trim();
     const height = String(fd.get("height") ?? "").trim();
     const location = String(fd.get("location") ?? "").trim();
+    const gender = String(fd.get("gender") ?? "");
     const waDigits = String(fd.get("whatsapp") ?? "").replace(/\D/g, "");
     let whatsapp = "";
     if (waDigits.length === 10) {
@@ -149,6 +156,7 @@ export default function Home() {
     const instagram = String(fd.get("instagram") ?? "").trim();
     const videoPresentation = String(fd.get("video_presentation") ?? "");
     const actingInterest = String(fd.get("acting_interest") ?? "");
+    const dancer = String(fd.get("dancer") ?? "");
     const professionalModel = String(fd.get("prof_model") ?? "");
     const minimumCosting = String(fd.get("minimumCosting") ?? "").trim();
 
@@ -171,10 +179,12 @@ export default function Home() {
         age,
         height,
         location,
+        gender,
         whatsapp,
         instagram,
         videoPresentation,
         actingInterest,
+        dancer,
         professionalModel,
         minimumCosting: professionalModel === "yes" ? minimumCosting : "",
         photos: photoList,
@@ -208,9 +218,15 @@ export default function Home() {
 
       setShowSuccess(true);
       setSubmitting(false);
+
+      const isFemale = gender === "female";
       setTimeout(() => {
-        window.location.href =
-          "https://wa.me/918848772371?text=Hi%2C%20I%27m%20registered%20as%20a%20model%20for%20Vishu%20Shoot%202026";
+        setShowSuccess(false);
+        if (isFemale) {
+          setShowCommunityPopup(true);
+        } else {
+          window.location.href = OFFICIAL_CONTACT_WA_URL;
+        }
       }, 1500);
     } catch (err) {
       stopSubmitProgress();
@@ -280,6 +296,19 @@ export default function Home() {
               <div className="col-span-3 group relative bg-surface-container rounded-xl p-2.5 transition-all duration-300 input-focus-glow border border-white/5">
                 <label className="block text-[8px] font-bold text-primary-container uppercase tracking-tighter mb-0.5">Location *</label>
                 <input name="location" className="w-full bg-transparent border-none p-0 text-sm text-on-surface placeholder:text-white/20 outline-none focus:ring-0 font-medium" placeholder="City" required type="text"/>
+              </div>
+              <div className="col-span-6 bg-surface-container border border-white/5 rounded-xl p-2.5">
+                <p className="text-[9px] font-medium text-white/60 mb-2 leading-none">Female or Male *</p>
+                <div className="flex gap-2 max-w-xs">
+                  <label className="flex-1 cursor-pointer">
+                    <input className="peer hidden" name="gender" required type="radio" value="female"/>
+                    <div className="w-full py-2 text-center rounded-lg border border-white/5 text-[11px] font-bold peer-checked:bg-primary-container peer-checked:text-on-primary">Female</div>
+                  </label>
+                  <label className="flex-1 cursor-pointer">
+                    <input className="peer hidden" name="gender" type="radio" value="male"/>
+                    <div className="w-full py-2 text-center rounded-lg border border-white/5 text-[11px] font-bold peer-checked:bg-primary-container peer-checked:text-on-primary">Male</div>
+                  </label>
+                </div>
               </div>
             </div>
           </section>
@@ -402,6 +431,19 @@ export default function Home() {
                 </div>
               </div>
               <div className="col-span-2 bg-surface-container border border-white/5 rounded-xl p-2">
+                <p className="text-[9px] font-medium text-white/60 mb-2 leading-none">Are yoU Dancer? *</p>
+                <div className="flex gap-1.5 max-w-[200px]">
+                  <label className="flex-1 cursor-pointer">
+                    <input className="peer hidden" name="dancer" required type="radio" value="yes"/>
+                    <div className="w-full py-1.5 text-center rounded-lg border border-white/5 text-[10px] font-bold peer-checked:bg-primary-container peer-checked:text-on-primary">Yes</div>
+                  </label>
+                  <label className="flex-1 cursor-pointer">
+                    <input className="peer hidden" name="dancer" type="radio" value="no"/>
+                    <div className="w-full py-1.5 text-center rounded-lg border border-white/5 text-[10px] font-bold peer-checked:bg-primary-container peer-checked:text-on-primary">No</div>
+                  </label>
+                </div>
+              </div>
+              <div className="col-span-2 bg-surface-container border border-white/5 rounded-xl p-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-[9px] font-medium text-white/60 leading-none">Professional model? *</p>
                   <div className="flex gap-1.5 w-full sm:w-auto">
@@ -485,7 +527,59 @@ export default function Home() {
           </div>
         </div>
         <h2 className="mt-6 text-xl font-headline font-bold text-white">Registration Successful</h2>
-        <p className="mt-2 text-white/60 font-body text-[12px] text-center px-10">Redirecting to official WhatsApp...</p>
+        <p className="mt-2 text-white/60 font-body text-[12px] text-center px-10">
+          Thank you — finishing up…
+        </p>
+      </div>
+
+      <div
+        className={`fixed inset-0 z-[105] flex flex-col items-center justify-center p-5 transition-opacity duration-300 ${
+          showCommunityPopup
+            ? "pointer-events-auto opacity-100"
+            : "pointer-events-none opacity-0"
+        }`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="community-popup-title"
+      >
+        <div
+          className="absolute inset-0 bg-black/60 backdrop-blur-xl"
+          onClick={() => {
+            setShowCommunityPopup(false);
+            window.location.href = OFFICIAL_CONTACT_WA_URL;
+          }}
+          aria-hidden
+        />
+        <div className="relative z-10 w-full max-w-sm rounded-2xl border border-[#FFD700]/25 bg-[#131313]/95 p-6 shadow-2xl backdrop-blur-md">
+          <h2
+            id="community-popup-title"
+            className="font-headline text-lg font-bold text-center text-white leading-snug"
+          >
+            Join our WhatsApp community
+          </h2>
+          <p className="mt-3 text-center text-[12px] text-white/55 leading-relaxed">
+            Connect with Shoot Wayanad creators and stay updated.
+          </p>
+          <a
+            href={WHATSAPP_COMMUNITY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-primary-container py-3.5 font-headline text-sm font-extrabold text-on-primary-container shadow-[0_8px_30px_rgba(255,215,0,0.15)] active:scale-[0.98] transition-transform"
+          >
+            <span className="material-symbols-outlined text-lg">chat</span>
+            Join group
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              setShowCommunityPopup(false);
+              window.location.href = OFFICIAL_CONTACT_WA_URL;
+            }}
+            className="mt-3 w-full rounded-xl border border-white/10 py-3 text-[12px] font-medium text-white/70 hover:bg-white/5"
+          >
+            Continue to official WhatsApp
+          </button>
+        </div>
       </div>
 
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-0 overflow-hidden opacity-10">

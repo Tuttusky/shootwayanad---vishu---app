@@ -1,5 +1,9 @@
 /**
- * Vishu Shoot 2026 — Web App
+ * Vishu Shoot 2026 — Web App (Register.gs)
+ *
+ * Your Next.js site posts JSON to `/api/register`, which forwards the same body here
+ * (env: GAS_WEB_APP_URL → Web App URL ending in `/exec`). Analytics (GA, Clarity) run
+ * only in the browser — this script does not load them.
  *
  * SETUP
  * -----
@@ -8,7 +12,7 @@
  *
  * B) Tell the script which spreadsheet to use — pick ONE:
  *
- *    Option 1 — Code (line ~27): replace YOUR_SPREADSHEET_ID with the real id from the URL.
+ *    Option 1 — Code (below): set SHEET_ID to the real id from the URL.
  *
  *    Option 2 — Script properties (recommended): Project Settings (gear) → Script properties
  *      → Add row: Property = SHEET_ID, Value = (paste id from URL)
@@ -34,13 +38,15 @@
  * D) Deploy → New deployment → Select type: Web app
  *      Execute as: Me
  *      Who has access: Anyone
- *    Copy the Web App URL → Next.js `.env.local`: GAS_WEB_APP_URL=https://script.google.com/macros/s/.../exec
+ *    Copy the Web App URL → Vercel + `.env.local`: GAS_WEB_APP_URL=https://script.google.com/macros/s/.../exec
+ *    Redeploy the Apps Script after pasting updated code; update GAS_WEB_APP_URL if the `/exec` URL changes.
  *
- * JSON from your site (POST): fullName, age, height, location, gender, category (string; multi = "a; b"),
- *   categories (optional array of strings — merged into Category column), whatsapp,
- *   alreadyInWAGroup, instagram, videoPresentation, actingInterest, dancer, professionalModel, minimumCosting,
- *   ageCategory, registrationForm ("kids" | "main"), talents, photos: [ { name, mimeType, dataBase64 } ]
- *   Kids form uses the same POST shape; Age Category = kid, Registration Form = kids.
+ * JSON POST body (same as Next.js payload): fullName, age, height, location, gender,
+ *   category (string; multi = "a; b"), categories (optional string[] — merged into Category column),
+ *   whatsapp, alreadyInWAGroup, instagram, videoPresentation, actingInterest, dancer,
+ *   professionalModel (or prof_model), minimumCosting, ageCategory, registrationForm ("kids" | "main"),
+ *   talents (trimmed to 800 chars server-side), photos: [ { name, mimeType, dataBase64 } ]
+ *   Kids: ageCategory = kid, registrationForm = kids, height may be "—".
  */
 
 /** Fallback when `ageCategory` is not sent (legacy links). Prefer per-category ids below. */
@@ -209,10 +215,27 @@ function getCategory_(data) {
   return "";
 }
 
+/** Matches Next.js talents field max length (safety for Sheets + payload). */
+var TALENTS_MAX_LEN = 800;
+
+function truncateTalents_(s) {
+  var t = String(s || "");
+  if (t.length <= TALENTS_MAX_LEN) return t;
+  return t.slice(0, TALENTS_MAX_LEN);
+}
+
 function getTalents_(data) {
   var v = data.talents != null ? String(data.talents) : "";
+  if (!v && data.Talents != null) v = String(data.Talents);
+  return truncateTalents_(v);
+}
+
+/** Professional model yes/no — supports prof_model alias from forms. */
+function getProfessionalModel_(data) {
+  var v = data.professionalModel != null ? String(data.professionalModel) : "";
   if (v) return v;
-  if (data.Talents != null) return String(data.Talents);
+  if (data.prof_model != null) return String(data.prof_model);
+  if (data.ProfessionalModel != null) return String(data.ProfessionalModel);
   return "";
 }
 
@@ -256,7 +279,7 @@ function buildRow_(data, photoCell) {
     data.videoPresentation || "",
     data.actingInterest || "",
     getDancer_(data),
-    data.professionalModel || "",
+    getProfessionalModel_(data),
     data.minimumCosting || "",
     photoCell,
     getAgeCategory_(data),
@@ -473,7 +496,17 @@ function doPost(e) {
       return jsonResponse_(out);
     }
 
-    var data = JSON.parse(e.postData.contents);
+    var data;
+    try {
+      data = JSON.parse(e.postData.contents);
+    } catch (parseErr) {
+      out.error = "Invalid JSON body. Ensure the client sends application/json (Next.js /api/register proxy).";
+      return jsonResponse_(out);
+    }
+    if (typeof data !== "object" || data === null || Array.isArray(data)) {
+      out.error = "JSON must be an object.";
+      return jsonResponse_(out);
+    }
     var routeKey = getCategoryRoutingKey_(data);
     var cfgErr = validateCategorySheetConfigured_(cfg, routeKey);
     if (cfgErr) {

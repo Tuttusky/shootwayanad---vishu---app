@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { parseRegisterResponseBody } from "@/lib/register-response";
 import { photosToPayload } from "@/lib/registration-images";
 import { playRegistrationSuccessSound } from "@/lib/registration-success-sound";
 import { TalentsTypewriterTextarea } from "@/components/TalentsTypewriterTextarea";
@@ -144,16 +145,9 @@ export function KidsRegistrationForm() {
       });
 
       const text = await res.text();
-      let parsed: { ok?: boolean; error?: string } = {};
-      try {
-        parsed = text ? (JSON.parse(text) as { ok?: boolean; error?: string }) : {};
-      } catch {
-        throw new Error(
-          "Server returned an invalid response. Check Apps Script deployment and try again."
-        );
-      }
+      const parsed = parseRegisterResponseBody(text);
 
-      if (!res.ok || parsed.ok !== true) {
+      if (parsed.ok !== true) {
         throw new Error(
           parsed.error || `Registration failed (${res.status}). Try again.`
         );

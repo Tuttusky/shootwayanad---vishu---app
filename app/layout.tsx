@@ -8,6 +8,7 @@ import {
   SITE_NAME,
   SITE_TITLE,
 } from "@/lib/site-marketing";
+import { getSiteOrigin } from "@/lib/site-url";
 import "./globals.css";
 
 /** Google Analytics 4 — override with NEXT_PUBLIC_GA_MEASUREMENT_ID in .env if needed. */
@@ -28,15 +29,15 @@ const OG_IMAGE_PATH = "/og-vishu-shoot-2026.jpeg";
 const OG_IMAGE_ALT =
   "Vishu Shoot 2026 — Model registration open; festive Kerala Vishu theme with traditional lamp and flowers.";
 
-const metadataBaseUrl =
-  process.env.NEXT_PUBLIC_SITE_URL?.startsWith("http")
-    ? process.env.NEXT_PUBLIC_SITE_URL
-    : process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000";
+const siteOrigin = getSiteOrigin();
+const metadataBase = new URL(siteOrigin);
+const ogImageAbsolute = new URL(OG_IMAGE_PATH, metadataBase).href;
 
 export const metadata: Metadata = {
-  metadataBase: new URL(metadataBaseUrl),
+  metadataBase,
+  alternates: {
+    canonical: siteOrigin === "http://localhost:3000" ? undefined : siteOrigin,
+  },
   title: {
     default: SITE_TITLE,
     template: `%s | ${SITE_NAME}`,
@@ -57,11 +58,12 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_IN",
     siteName: SITE_NAME,
+    url: siteOrigin,
     images: [
       {
-        url: OG_IMAGE_PATH,
-        width: 1920,
-        height: 1080,
+        url: ogImageAbsolute,
+        secureUrl: ogImageAbsolute,
+        type: "image/jpeg",
         alt: OG_IMAGE_ALT,
       },
     ],
@@ -70,7 +72,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: [OG_IMAGE_PATH],
+    images: [ogImageAbsolute],
   },
 };
 

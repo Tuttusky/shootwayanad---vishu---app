@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { photosToPayload } from "@/lib/registration-images";
+import { playRegistrationSuccessSound } from "@/lib/registration-success-sound";
 import { TalentsTypewriterTextarea } from "@/components/TalentsTypewriterTextarea";
 
 export function KidsRegistrationForm() {
@@ -164,6 +165,7 @@ export function KidsRegistrationForm() {
 
       /* Kid landing (/form/kids): same WA Yes/No success rules as main form categories. */
       setSuccessAlreadyInWaGroup(alreadyInWAGroup === "yes");
+      playRegistrationSuccessSound();
       setShowSuccess(true);
       setSubmitting(false);
 

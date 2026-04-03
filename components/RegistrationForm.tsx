@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { photosToPayload } from "@/lib/registration-images";
+import { playRegistrationSuccessSound } from "@/lib/registration-success-sound";
 import { TalentsTypewriterTextarea } from "@/components/TalentsTypewriterTextarea";
 
 const CATEGORY_OPTIONS_ALL = [
@@ -231,6 +232,7 @@ export function RegistrationForm({
 
       /* Same success rules for all main landing categories: Female, Male, Mature Women, Mature Men. */
       setSuccessAlreadyInWaGroup(alreadyInWAGroup === "yes");
+      playRegistrationSuccessSound();
       setShowSuccess(true);
       setSubmitting(false);
 

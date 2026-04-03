@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Manrope, Plus_Jakarta_Sans } from "next/font/google";
+import { GlobalButtonVibration } from "@/components/GlobalButtonVibration";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -30,7 +31,10 @@ export default function RootLayout({
       <head>
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
       </head>
-      <body className="min-h-[max(884px,100dvh)] flex flex-col">{children}</body>
+      <body className="flex min-h-[max(884px,100dvh)] flex-col">
+        <GlobalButtonVibration />
+        {children}
+      </body>
     </html>
   );
 }

@@ -18,6 +18,13 @@
  *    Optional: PHOTOS_FOLDER_ID — if set, photos go there. If unset, a folder
  *      "Vishu Shoot 2026 — registrations" is auto-created in My Drive (first run).
  *
+ *    Five landing categories → five spreadsheets (recommended):
+ *      Create one Google Sheet per category, copy each id, set in code or Script properties:
+ *        SHEET_ID_FEMALE, SHEET_ID_KIDS, SHEET_ID_MALE, SHEET_ID_MATURE_WOMEN, SHEET_ID_MATURE_MEN
+ *      Optional tab names: SHEET_NAME_FEMALE, SHEET_NAME_KIDS, … (default Sheet1 each).
+ *      Run `setupAllCategorySheets()` once (or `setupSheetHeadersForCategory("female")` etc.).
+ *      Legacy: if `ageCategory` is missing (e.g. old /form link), rows use SHEET_ID / SHEET_NAME.
+ *
  * C) Run `setupSheetHeaders` once (▶ Run → authorize all scopes).
  *
  * D) Deploy → New deployment → Select type: Web app
@@ -25,15 +32,32 @@
  *      Who has access: Anyone
  *    Copy the Web App URL → Next.js `.env.local`: GAS_WEB_APP_URL=https://script.google.com/macros/s/.../exec
  *
- * JSON from your site (POST): fullName, age, height, location, gender, whatsapp, instagram,
- *   videoPresentation, actingInterest, dancer, professionalModel, minimumCosting,
- *   photos: [ { name, mimeType, dataBase64 } ]
+ * JSON from your site (POST): fullName, age, height, location, gender, category, whatsapp,
+ *   alreadyInWAGroup, instagram, videoPresentation, actingInterest, dancer, professionalModel, minimumCosting,
+ *   ageCategory, registrationForm ("kids" | "main"), talents, photos: [ { name, mimeType, dataBase64 } ]
+ *   Kids form uses the same POST shape; Age Category = kid, Registration Form = kids.
  */
 
-/** Paste id from: https://docs.google.com/spreadsheets/d/<THIS_PART>/edit — or use Script properties / saveSheetIdToScriptProperties */
+/** Fallback when `ageCategory` is not sent (legacy links). Prefer per-category ids below. */
 var SHEET_ID = "1A9JSDomu2c8IwBedP399JRjZYZ6InTQvV8NvFTXx0P0";
-/** Tab to write rows to. Default "Sheet1" matches the first sheet you see. Use "Registrations" if you prefer a separate tab. */
 var SHEET_NAME = "Sheet1";
+
+/** Female (Ages 19–30) — landing → /form?category=female */
+var SHEET_ID_FEMALE = "";
+var SHEET_NAME_FEMALE = "Sheet1";
+/** Kid (Ages 5–18) — /form/kids */
+var SHEET_ID_KIDS = "";
+var SHEET_NAME_KIDS = "Sheet1";
+/** Male (Ages 19–30) */
+var SHEET_ID_MALE = "";
+var SHEET_NAME_MALE = "Sheet1";
+/** Mature Women (30–55) */
+var SHEET_ID_MATURE_WOMEN = "";
+var SHEET_NAME_MATURE_WOMEN = "Sheet1";
+/** Mature Men (30–55) */
+var SHEET_ID_MATURE_MEN = "";
+var SHEET_NAME_MATURE_MEN = "Sheet1";
+
 /** Drive folder ID from folder URL, or "" to skip saving images (rows still save). */
 var PHOTOS_FOLDER_ID = "";
 
@@ -51,11 +75,35 @@ function saveSheetIdToScriptProperties() {
   PropertiesService.getScriptProperties().setProperty("SHEET_ID", id);
 }
 
+/**
+ * Run once: copies SHEET_ID_KIDS from the top of this file into Script properties.
+ */
+function saveKidsSheetIdToScriptProperties() {
+  var id = SHEET_ID_KIDS;
+  if (!id || id === "YOUR_SPREADSHEET_ID") {
+    throw new Error(
+      "Set var SHEET_ID_KIDS at the top of this file to your kids-only spreadsheet id " +
+        "(from the Sheet URL between /d/ and /edit)."
+    );
+  }
+  PropertiesService.getScriptProperties().setProperty("SHEET_ID_KIDS", id);
+}
+
 function getConfig_() {
   var p = PropertiesService.getScriptProperties();
   return {
     sheetId: (p.getProperty("SHEET_ID") || SHEET_ID || "").trim(),
     sheetName: (p.getProperty("SHEET_NAME") || SHEET_NAME || "Sheet1").trim(),
+    sheetIdFemale: (p.getProperty("SHEET_ID_FEMALE") || SHEET_ID_FEMALE || "").trim(),
+    sheetNameFemale: (p.getProperty("SHEET_NAME_FEMALE") || SHEET_NAME_FEMALE || "Sheet1").trim(),
+    sheetIdKids: (p.getProperty("SHEET_ID_KIDS") || SHEET_ID_KIDS || "").trim(),
+    sheetNameKids: (p.getProperty("SHEET_NAME_KIDS") || SHEET_NAME_KIDS || "Sheet1").trim(),
+    sheetIdMale: (p.getProperty("SHEET_ID_MALE") || SHEET_ID_MALE || "").trim(),
+    sheetNameMale: (p.getProperty("SHEET_NAME_MALE") || SHEET_NAME_MALE || "Sheet1").trim(),
+    sheetIdMatureWomen: (p.getProperty("SHEET_ID_MATURE_WOMEN") || SHEET_ID_MATURE_WOMEN || "").trim(),
+    sheetNameMatureWomen: (p.getProperty("SHEET_NAME_MATURE_WOMEN") || SHEET_NAME_MATURE_WOMEN || "Sheet1").trim(),
+    sheetIdMatureMen: (p.getProperty("SHEET_ID_MATURE_MEN") || SHEET_ID_MATURE_MEN || "").trim(),
+    sheetNameMatureMen: (p.getProperty("SHEET_NAME_MATURE_MEN") || SHEET_NAME_MATURE_MEN || "Sheet1").trim(),
     photosFolderId: (p.getProperty("PHOTOS_FOLDER_ID") || PHOTOS_FOLDER_ID || "").trim(),
   };
 }
@@ -67,8 +115,11 @@ function getHeaderRow_() {
     "Age",
     "Height",
     "Location",
+    "Talents",
     "Gender",
+    "Category",
     "WhatsApp",
+    "Already in WA Group",
     "Instagram",
     "Video Presentation",
     "Acting Interest",
@@ -76,6 +127,8 @@ function getHeaderRow_() {
     "Professional Model",
     "Minimum Costing",
     "Photo URLs",
+    "Age Category",
+    "Registration Form",
   ];
 }
 
@@ -110,7 +163,12 @@ function ensureHeaders_(sheet) {
     return;
   }
   var lastTitle = String(sheet.getRange(1, lastCol).getValue()).trim();
-  if (lastTitle !== "Photo URLs") {
+  if (
+    lastTitle !== "Photo URLs" &&
+    lastTitle !== "Age Category" &&
+    lastTitle !== "Registration Form" &&
+    lastTitle !== "Talents"
+  ) {
     sheet.getRange(1, 1, 1, need).setValues([headers]);
   }
 }
@@ -130,6 +188,44 @@ function getDancer_(data) {
   return "";
 }
 
+function getCategory_(data) {
+  var v = data.category != null ? String(data.category) : "";
+  if (v) return v;
+  if (data.Category != null) return String(data.Category);
+  return "";
+}
+
+function getTalents_(data) {
+  var v = data.talents != null ? String(data.talents) : "";
+  if (v) return v;
+  if (data.Talents != null) return String(data.Talents);
+  return "";
+}
+
+/** Sheet column "Already in WA Group" — always stored as lowercase yes / no. */
+function alreadyInWAGroup_(data) {
+  var v = data.alreadyInWAGroup;
+  if (v === true || v === "true" || v === "yes") return "yes";
+  if (v === false || v === "false" || v === "no") return "no";
+  return "no";
+}
+
+/** kid | female | male | mature_women | mature_men (from landing). */
+function getAgeCategory_(data) {
+  var v = data.ageCategory != null ? String(data.ageCategory) : "";
+  if (v) return v;
+  if (data.AgeCategory != null) return String(data.AgeCategory);
+  return "";
+}
+
+/** kids | main — which UI submitted the row. */
+function getRegistrationForm_(data) {
+  var v = data.registrationForm != null ? String(data.registrationForm) : "";
+  if (v) return v;
+  if (data.RegistrationForm != null) return String(data.RegistrationForm);
+  return "";
+}
+
 function buildRow_(data, photoCell) {
   return [
     new Date(),
@@ -137,8 +233,11 @@ function buildRow_(data, photoCell) {
     data.age || "",
     data.height || "",
     data.location || "",
+    getTalents_(data),
     getGender_(data),
+    getCategory_(data),
     data.whatsapp || "",
+    alreadyInWAGroup_(data),
     data.instagram || "",
     data.videoPresentation || "",
     data.actingInterest || "",
@@ -146,6 +245,8 @@ function buildRow_(data, photoCell) {
     data.professionalModel || "",
     data.minimumCosting || "",
     photoCell,
+    getAgeCategory_(data),
+    getRegistrationForm_(data),
   ];
 }
 
@@ -196,6 +297,110 @@ function getRegistrationSheet_(cfg) {
   return sheet;
 }
 
+/** True when this POST should go to the kids-only spreadsheet. */
+function isKidsRegistration_(data) {
+  var rf = data.registrationForm != null ? String(data.registrationForm).toLowerCase() : "";
+  if (rf === "kids") return true;
+  var ac = data.ageCategory != null ? String(data.ageCategory).toLowerCase() : "";
+  if (ac === "kid") return true;
+  return false;
+}
+
+/**
+ * Routing key from JSON: kid | female | male | mature_women | mature_men | "" (legacy).
+ */
+function getCategoryRoutingKey_(data) {
+  if (isKidsRegistration_(data)) return "kid";
+  var ac = data.ageCategory != null ? String(data.ageCategory).toLowerCase() : "";
+  if (ac === "female" || ac === "male" || ac === "mature_women" || ac === "mature_men") return ac;
+  return "";
+}
+
+/**
+ * Returns { sheetId, sheetName } for the spreadsheet that should receive this row.
+ * routeKey: kid | female | male | mature_women | mature_men | ""
+ */
+function getSheetTargetForCategoryKey_(cfg, routeKey) {
+  if (routeKey === "kid") {
+    return { sheetId: cfg.sheetIdKids, sheetName: cfg.sheetNameKids };
+  }
+  if (routeKey === "female") {
+    return { sheetId: cfg.sheetIdFemale, sheetName: cfg.sheetNameFemale };
+  }
+  if (routeKey === "male") {
+    return { sheetId: cfg.sheetIdMale, sheetName: cfg.sheetNameMale };
+  }
+  if (routeKey === "mature_women") {
+    return { sheetId: cfg.sheetIdMatureWomen, sheetName: cfg.sheetNameMatureWomen };
+  }
+  if (routeKey === "mature_men") {
+    return { sheetId: cfg.sheetIdMatureMen, sheetName: cfg.sheetNameMatureMen };
+  }
+  return { sheetId: cfg.sheetId, sheetName: cfg.sheetName };
+}
+
+/** Returns null if OK, or an error message for the client. */
+function validateCategorySheetConfigured_(cfg, routeKey) {
+  var t = getSheetTargetForCategoryKey_(cfg, routeKey);
+  if (t.sheetId && t.sheetId !== "YOUR_SPREADSHEET_ID") return null;
+  if (routeKey === "") {
+    return (
+      "Default spreadsheet not set. Set SHEET_ID in code or Script properties " +
+        "(used when the form is opened without a category), or open the site from the category landing page."
+    );
+  }
+  var propMap = {
+    kid: "SHEET_ID_KIDS",
+    female: "SHEET_ID_FEMALE",
+    male: "SHEET_ID_MALE",
+    mature_women: "SHEET_ID_MATURE_WOMEN",
+    mature_men: "SHEET_ID_MATURE_MEN",
+  };
+  var prop = propMap[routeKey] || "SHEET_ID";
+  return (
+    "Spreadsheet not configured for this category. Create a Google Sheet, set " +
+    prop +
+    " in code or Script properties, then run setupSheetHeadersForCategory(\"" +
+    routeKey +
+    '").'
+  );
+}
+
+/** Digits only; compare last 10 digits so +91 / 91 / spacing variants match. */
+function normalizePhoneDigits_(s) {
+  var d = String(s || "").replace(/\D/g, "");
+  if (d.length > 10) return d.slice(-10);
+  return d;
+}
+
+/** 1-based column index for exact header text (case-insensitive), or -1. */
+function findHeaderColumn1Based_(sheet, headerName) {
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < 1) return -1;
+  var row = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var want = String(headerName).trim().toLowerCase();
+  for (var c = 0; c < row.length; c++) {
+    if (String(row[c]).trim().toLowerCase() === want) return c + 1;
+  }
+  return -1;
+}
+
+/** True if WhatsApp column already has this number (10+ digit match). */
+function whatsappExistsInSheet_(sheet, incomingRaw) {
+  var want = normalizePhoneDigits_(incomingRaw);
+  if (!want || want.length < 10) return false;
+  var col = findHeaderColumn1Based_(sheet, "WhatsApp");
+  if (col < 1) return false;
+  var last = sheet.getLastRow();
+  if (last < 2) return false;
+  var vals = sheet.getRange(2, col, last, col).getValues();
+  for (var r = 0; r < vals.length; r++) {
+    var ex = normalizePhoneDigits_(vals[r][0]);
+    if (ex && ex === want) return true;
+  }
+  return false;
+}
+
 var AUTO_PHOTOS_FOLDER_NAME = "Vishu Shoot 2026 — registrations";
 
 /**
@@ -228,7 +433,7 @@ function doGet() {
       ok: true,
       service: "vishu-register",
       hint: "POST JSON registrations to this URL from your Next.js /api/register proxy.",
-      schemaColumns: 13,
+      schemaColumns: 19,
     })
   ).setMimeType(ContentService.MimeType.JSON);
 }
@@ -237,22 +442,27 @@ function doPost(e) {
   var out = { ok: false };
   try {
     var cfg = getConfig_();
-    if (!cfg.sheetId || cfg.sheetId === "YOUR_SPREADSHEET_ID") {
-      out.error =
-        "Missing SHEET_ID. Open your Google Sheet, copy the id from the URL " +
-        "(between /d/ and /edit). Then either: (1) set var SHEET_ID in code, " +
-        "(2) Project Settings → Script properties → SHEET_ID = that id, or " +
-        "(3) run saveSheetIdToScriptProperties() once with the id filled in.";
-      return jsonResponse_(out);
-    }
-
     if (!e.postData || !e.postData.contents) {
       out.error = "No POST body";
       return jsonResponse_(out);
     }
 
     var data = JSON.parse(e.postData.contents);
-    var sheet = getRegistrationSheet_(cfg);
+    var routeKey = getCategoryRoutingKey_(data);
+    var cfgErr = validateCategorySheetConfigured_(cfg, routeKey);
+    if (cfgErr) {
+      out.error = cfgErr;
+      return jsonResponse_(out);
+    }
+
+    var target = getSheetTargetForCategoryKey_(cfg, routeKey);
+    var sheet = getRegistrationSheet_(target);
+
+    var waRaw = data.whatsapp != null ? String(data.whatsapp) : "";
+    if (whatsappExistsInSheet_(sheet, waRaw)) {
+      out.error = "This WhatsApp number is already registered.";
+      return jsonResponse_(out);
+    }
 
     var photoUrls = [];
     var photoErrs = [];
@@ -343,4 +553,71 @@ function setupSheetHeaders() {
     );
   }
   getRegistrationSheet_(cfg);
+}
+
+/**
+ * Run once per category after the matching SHEET_ID_* is set.
+ * routeKey: "female" | "kid" | "male" | "mature_women" | "mature_men"
+ */
+function setupSheetHeadersForCategory(routeKey) {
+  var cfg = getConfig_();
+  var err = validateCategorySheetConfigured_(cfg, routeKey);
+  if (err) throw new Error(err);
+  var t = getSheetTargetForCategoryKey_(cfg, routeKey);
+  getRegistrationSheet_(t);
+}
+
+/**
+ * Run once: creates/opens tabs + headers for every category id that is set in config.
+ */
+function setupAllCategorySheets() {
+  var keys = ["female", "kid", "male", "mature_women", "mature_men"];
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    var cfg = getConfig_();
+    var t = getSheetTargetForCategoryKey_(cfg, k);
+    if (t.sheetId && t.sheetId !== "YOUR_SPREADSHEET_ID") {
+      getRegistrationSheet_(t);
+    }
+  }
+}
+
+/**
+ * Overwrites row 1 for one category spreadsheet (same columns as main).
+ * routeKey: "female" | "kid" | "male" | "mature_women" | "mature_men"
+ */
+function forceHeadersRow1ForCategory(routeKey) {
+  var cfg = getConfig_();
+  var t = getSheetTargetForCategoryKey_(cfg, routeKey);
+  if (!t.sheetId) {
+    throw new Error("Set sheet id for category: " + routeKey);
+  }
+  var sheet = SpreadsheetApp.openById(t.sheetId).getSheetByName(t.sheetName);
+  if (!sheet) {
+    throw new Error("Sheet tab not found: " + t.sheetName);
+  }
+  var headers = getHeaderRow_();
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+}
+
+/** @deprecated Use setupSheetHeadersForCategory("kid"). */
+function setupKidsSheetHeaders() {
+  setupSheetHeadersForCategory("kid");
+}
+
+/** @deprecated Use forceHeadersRow1ForCategory("kid"). */
+function forceHeadersRow1Kids() {
+  forceHeadersRow1ForCategory("kid");
+}
+
+/**
+ * Copies all non-empty SHEET_ID_* vars from the top of this file into Script properties.
+ */
+function saveAllCategorySheetIdsToScriptProperties() {
+  var p = PropertiesService.getScriptProperties();
+  if (SHEET_ID_FEMALE) p.setProperty("SHEET_ID_FEMALE", SHEET_ID_FEMALE);
+  if (SHEET_ID_KIDS) p.setProperty("SHEET_ID_KIDS", SHEET_ID_KIDS);
+  if (SHEET_ID_MALE) p.setProperty("SHEET_ID_MALE", SHEET_ID_MALE);
+  if (SHEET_ID_MATURE_WOMEN) p.setProperty("SHEET_ID_MATURE_WOMEN", SHEET_ID_MATURE_WOMEN);
+  if (SHEET_ID_MATURE_MEN) p.setProperty("SHEET_ID_MATURE_MEN", SHEET_ID_MATURE_MEN);
 }

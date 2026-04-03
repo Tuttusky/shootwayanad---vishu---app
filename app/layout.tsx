@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Manrope, Plus_Jakarta_Sans } from "next/font/google";
+import Script from "next/script";
 import { GlobalButtonVibration } from "@/components/GlobalButtonVibration";
 import { PreventZoom } from "@/components/PreventZoom";
 import {
@@ -8,6 +9,10 @@ import {
   SITE_TITLE,
 } from "@/lib/site-marketing";
 import "./globals.css";
+
+/** Google Analytics 4 — override with NEXT_PUBLIC_GA_MEASUREMENT_ID in .env if needed. */
+const GA_MEASUREMENT_ID =
+  process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? "G-EKFWL5FHX8";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -93,6 +98,18 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
       </head>
       <body className="flex min-h-dvh flex-col overflow-x-hidden md:min-h-[max(884px,100dvh)]">
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${GA_MEASUREMENT_ID}');
+          `}
+        </Script>
         <PreventZoom />
         <GlobalButtonVibration />
         {children}

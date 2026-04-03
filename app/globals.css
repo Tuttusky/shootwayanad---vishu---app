@@ -64,10 +64,17 @@
   html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    touch-action: pan-x pan-y;
+    overflow-x: hidden;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
     min-height: 100dvh;
+    overflow-x: hidden;
   }
 
   @media (min-width: 768px) {
@@ -76,13 +83,20 @@
     }
   }
 
-  /* iOS Safari zooms focused fields if font-size < 16px — keeps form full-width without zoom */
-  @media (max-width: 767px) {
-    input:not([type="radio"]):not([type="checkbox"]):not([type="file"]):not([type="hidden"]),
-    textarea,
-    select {
-      font-size: 16px !important;
-    }
+  /* iOS Safari zooms focused fields when font-size < 16px */
+  input:not([type="radio"]):not([type="checkbox"]):not([type="file"]):not([type="hidden"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+    touch-action: manipulation;
+  }
+
+  /* Prevent double-tap zoom on all interactive elements */
+  button,
+  a,
+  label,
+  [role="button"] {
+    touch-action: manipulation;
   }
 
   .material-symbols-outlined {
